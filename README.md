@@ -1,6 +1,6 @@
-# FastAPI Products CRUD API
+# FastAPI Products CRUD API (Phase 2) - Authentication & Relationships
 
-This project is a RESTful API built with **FastAPI** for managing products. It supports full CRUD operations and uses **SQLite** as the database with **SQLAlchemy** for ORM mapping. Input validation is handled automatically via **Pydantic**.
+This project extends the initial RESTful API built with **FastAPI** by adding **User Authentication**, **Relationships**, and **Authorization**. It supports user registration, JWT-based login, and protected product management.
 
 ## Tech Stack
 - **Python 3.12+**
@@ -9,6 +9,16 @@ This project is a RESTful API built with **FastAPI** for managing products. It s
 - **SQLAlchemy ORM** (Object-Relational Mapping)
 - **Pydantic** (Data Validation)
 - **Uvicorn** (ASGI Server)
+- **Passlib & Bcrypt** (Password Hashing)
+- **Python-Jose** (JWT Generation)
+
+## Features (Phase 2 Additions)
+- **User Registration & Login**: Users can create an account and authenticate using an email and password.
+- **JWT Authentication**: Secure API access via Bearer tokens.
+- **One-to-Many Relationship**: Each product is tied to the `user_id` of the user who created it.
+- **Protected Routes**: Create, Update, and Delete endpoints require authentication.
+- **Resource Authorization**: Only the **owner** of a product can update or delete it (returns `403 Forbidden` otherwise).
+- **My Products Endpoint**: Users can fetch only their own products.
 
 ## Folder Structure
 ```
@@ -16,9 +26,10 @@ app/
 │── __init__.py
 │── main.py       # FastAPI application and route definitions
 │── database.py   # SQLAlchemy setup and connection
-│── models.py     # SQLAlchemy models (Database schema)
-│── schemas.py    # Pydantic schemas (Data validation)
+│── models.py     # SQLAlchemy models (User & Product schemas)
+│── schemas.py    # Pydantic schemas (Data validation & auth models)
 │── crud.py       # CRUD operations (Business logic)
+│── auth.py       # Authentication utilities, JWT generation, & hashing
 ```
 
 ## Installation & Setup
@@ -40,124 +51,61 @@ app/
 
 4. **Install Dependencies**:
    ```bash
-   pip install fastapi uvicorn sqlalchemy pydantic
+   pip install fastapi uvicorn sqlalchemy pydantic email-validator
+   pip install "passlib[bcrypt]" python-jose[cryptography] python-multipart
    ```
 
 ## How to Run
 
-Start the FastAPI development server using Uvicorn:
+Start the FastAPI development server:
 ```bash
 uvicorn app.main:app --reload
 ```
-The API will be running at `http://127.0.0.1:8000`.
+The API runs at `http://127.0.0.1:8000`.
 
 ## Swagger URL
 
-You can access the interactive API documentation at:
+Interactive API documentation with built-in Authorize button:
 - **Swagger UI**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **ReDoc**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+## Authentication Flow
+
+1. **Register** (`POST /auth/register`): Send an email and password to create an account.
+2. **Login** (`POST /auth/login`): Send your email as `username` and your `password`. Receive an `access_token`.
+3. **Use Bearer Token**: Include the token in the `Authorization` header for protected routes:
+   `Authorization: Bearer <your_access_token>`
 
 ## API Endpoints
 
-### 1. Create a Product
-- **Method:** `POST /items`
-- **Description:** Creates a new product.
-- **Validation Rules:**
-  - `name`: Cannot be empty (min length 1).
-  - `price`: Must be strictly greater than zero.
-  - `description`: Optional string.
+### Auth Endpoints
+- `POST /auth/register`: Create a new user.
+- `POST /auth/login`: Authenticate and receive a JWT.
 
-**Example Request (JSON):**
-```json
-{
-  "name": "Wireless Mouse",
-  "description": "Ergonomic wireless mouse",
-  "price": 29.99
-}
+### User Endpoints
+- `GET /users/me/items`: (Protected) Return products owned by the currently authenticated user.
+
+### Product Endpoints
+- `GET /items`: (Public) Return a paginated list of all products.
+- `GET /items/{id}`: (Public) Return a specific product.
+- `POST /items`: (Protected) Create a new product. (Automatically assigns `user_id` to current user).
+- `PUT /items/{id}`: (Protected & Authorized) Update an existing product. Only the owner can do this.
+- `DELETE /items/{id}`: (Protected & Authorized) Delete a product. Only the owner can do this.
+
+## Postman Usage
+
+A Postman collection is included: `postman_collection.json`.
+
+1. Import `postman_collection.json` into Postman.
+2. Ensure the server is running.
+3. The collection is configured to use the `{{base_url}}` environment variable (set to `http://127.0.0.1:8000`).
+4. **Automation**: When you run the `Login` request, a Postman script automatically captures the `access_token` and saves it to the collection variable `{{token}}`. 
+5. All protected endpoints are configured to use **Bearer Token** authentication using `{{token}}`. You do not need to manually copy-paste the token!
+
+## Testing
+
+An automated test suite using `pytest` is provided in `test_main.py`.
+Run tests via:
+```bash
+pytest test_main.py
 ```
-
-**Example Response (201 Created):**
-```json
-{
-  "name": "Wireless Mouse",
-  "description": "Ergonomic wireless mouse",
-  "price": 29.99,
-  "id": 1
-}
-```
-
-### 2. Get All Products
-- **Method:** `GET /items`
-- **Description:** Returns a list of products.
-- **Query Parameters:**
-  - `skip` (default=0): For pagination.
-  - `limit` (default=100): Maximum records to return.
-
-**Example Response (200 OK):**
-```json
-[
-  {
-    "name": "Wireless Mouse",
-    "description": "Ergonomic wireless mouse",
-    "price": 29.99,
-    "id": 1
-  }
-]
-```
-
-### 3. Get Product by ID
-- **Method:** `GET /items/{id}`
-- **Description:** Returns a single product matching the given ID.
-- **Example Response (200 OK):** *(same as create response)*
-- **Error Response (404 Not Found):**
-  ```json
-  {
-    "detail": "Product not found"
-  }
-  ```
-
-### 4. Update Product
-- **Method:** `PUT /items/{id}`
-- **Description:** Updates an existing product.
-- **Example Request (JSON):**
-  ```json
-  {
-    "name": "Advanced Wireless Mouse",
-    "price": 35.99
-  }
-  ```
-- **Example Response (200 OK):**
-  ```json
-  {
-    "name": "Advanced Wireless Mouse",
-    "description": "Ergonomic wireless mouse",
-    "price": 35.99,
-    "id": 1
-  }
-  ```
-
-### 5. Delete Product
-- **Method:** `DELETE /items/{id}`
-- **Description:** Deletes a product.
-- **Example Response (200 OK):**
-  ```json
-  {
-    "detail": "Product deleted"
-  }
-  ```
-
-## Postman Instructions
-
-A Postman collection is included in this repository: `postman_collection.json`.
-
-**To use the collection:**
-1. Open Postman.
-2. Click **Import** > **File** > select `postman_collection.json`.
-3. The collection is configured to use an environment variable `base_url` set to `http://127.0.0.1:8000`.
-4. Ensure the server is running.
-5. Run the requests sequentially, or use the **Collection Runner** to execute all tests automatically. The "Create Product" test will capture the `product_id` to test subsequent endpoints properly.
-
-## Assumptions
-- Product names do not need to be strictly unique across the database, though they are indexed for fast searching.
-- The `skip` and `limit` pagination is offset-based, which is standard for simple CRUD APIs.
-- For updating, any omitted field will not overwrite existing fields, only explicitly provided fields are updated.
+This tests Registration, Login, CRUD operations, Relationship assignment, and Authorization (403/401 errors).

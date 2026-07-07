@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+products.db
+test.db
+.pytest_cache/
+.env

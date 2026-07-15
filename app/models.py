@@ -19,6 +19,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     description = Column(String, nullable=True)
+    category = Column(String, index=True, nullable=False)
     price = Column(Float, nullable=False)
     
     user_id = Column(Integer, ForeignKey("users.id"))

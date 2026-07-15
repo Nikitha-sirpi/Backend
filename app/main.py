@@ -48,8 +48,22 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     return crud.create_product(db=db, product=product, user_id=current_user.id)
 
 @app.get("/items", response_model=List[schemas.Product])
-def read_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    products = crud.get_products(db, skip=skip, limit=limit)
+def read_products(
+    skip: int = 0,
+    limit: int = 100,
+    category: str = None,
+    min_price: float = None,
+    max_price: float = None,
+    db: Session = Depends(get_db),
+):
+    products = crud.get_products(
+        db=db,
+        skip=skip,
+        limit=limit,
+        category=category,
+        min_price=min_price,
+        max_price=max_price,
+    )
     return products
 
 @app.get("/items/{id}", response_model=schemas.Product)

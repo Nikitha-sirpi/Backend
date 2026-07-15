@@ -27,7 +27,18 @@ class TokenData(BaseModel):
 class ProductBase(BaseModel):
     name: str = Field(..., min_length=1, description="Product name cannot be empty")
     description: Optional[str] = None
-    price: float = Field(..., gt=0, description="Price must be greater than zero")
+
+    category: str = Field(
+        ...,
+        min_length=1,
+        description="Product category cannot be empty"
+    )
+
+    price: float = Field(
+        ...,
+        gt=0,
+        description="Price must be greater than zero"
+    )
 
 class ProductCreate(ProductBase):
     pass
